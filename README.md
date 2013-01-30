@@ -4,7 +4,7 @@ IdConverter
 Introduction
 ===========
 
-Sometimes we to hide the real id of the database to the user of a web 
+Sometimes we need to hide the real id of the database to the user of a web 
 
 application. The following implementation allow us to apply a completely random 
 
