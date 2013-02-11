@@ -30,7 +30,7 @@ object IdConverter
     // creates a set containing the symbols of the alphabet excluding those from the first parameter
     val initialSet = Set(symbols.flatMap(_.toSet).filter(i => !excludedChars.contains(int2String(i))):_*)
     if(initialSet.size < base)
-      thrown new Exception("More symbols are needed to create the alphabet.")
+      throw new Exception("More symbols are needed to create the alphabet.")
     @tailrec
     def findNextAlphabetChar(currentBase : Int, currentAlphabet : LinkAlphabet, currentSet : Set[Int]) : LinkAlphabet =
     {
