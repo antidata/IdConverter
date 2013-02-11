@@ -1,4 +1,4 @@
-package code.lib
+package com.company.lib
 
 import util.Random
 import collection.immutable.HashMap
@@ -16,7 +16,7 @@ object IdConverter
   lazy val symbols = List(upperCaseLetters, lowerCaseLetters, numbers)
   lazy val asciiRange = 48 to 122
   lazy val randomGen = new Random()
-  lazy val rangeSeparator = ","
+  lazy val rangeSeparator = "."
 
   /**
    * This method is used to create new alphabet to encode ids
@@ -26,15 +26,20 @@ object IdConverter
    */
   def CreateAlphabet(excludedChars : List[String])(base : Int, prefix : String, stringRanges : List[Range]) : LinkAlphabet =
   {
-    require(base > 1 && base <= 59)
+    require(base > 1 && base <= 62)
+    // creates a set containing the symbols of the alphabet excluding those from the first parameter
+    val initialSet = Set(symbols.flatMap(_.toSet).filter(i => !excludedChars.contains(int2String(i))):_*)
+    if(initialSet.size < base)
+      thrown new Exception("More symbols are needed to create the alphabet.")
     @tailrec
-    def findNextAlphabetChar(currentBase : Int, currentAlphabet : LinkAlphabet) : LinkAlphabet =
+    def findNextAlphabetChar(currentBase : Int, currentAlphabet : LinkAlphabet, currentSet : Set[Int]) : LinkAlphabet =
     {
       @tailrec
-      def randomChar : String =
+      def randomChar : Int =
       {
-        val nro = asciiRange(randomGen.nextInt(asciiRange.length))
-        if(excludedChars.contains(nro) || symbols.forall(!_.contains(nro)) || currentAlphabet.alphabet.contains(nro))
+        val nro = getOneFromSet(currentSet)
+        val genChar : String = nro
+        if(currentAlphabet.alphabet.contains(genChar))
           randomChar
         else
           nro
@@ -44,10 +49,15 @@ object IdConverter
       else
       {
         val nro = randomChar
-        findNextAlphabetChar(currentBase + 1, LinkAlphabet(currentAlphabet.prefixAlphabet, currentBase+1, currentAlphabet.alphabet + ((nro, currentBase)), currentAlphabet.stringRanges))
+        findNextAlphabetChar(currentBase + 1, LinkAlphabet(currentAlphabet.prefixAlphabet, currentBase+1, currentAlphabet.alphabet + ((nro, currentBase)), currentAlphabet.stringRanges), currentSet.-(nro))
       }
     }
-    findNextAlphabetChar(0, LinkAlphabet(prefix, base, HashMap(), stringRanges))
+    def getOneFromSet[T](s : Set[T]) : T =
+    {
+      val index = randomGen.nextInt(s.size)
+      s.toList(index)
+    }
+    findNextAlphabetChar(0, LinkAlphabet(prefix, base, HashMap(), stringRanges), initialSet)
   }
 
   /**
@@ -101,19 +111,28 @@ object IdConverter
       }
       innerEncode(factorized, "")
     }
-    generateLink(toProcess, alpha.prefixAlphabet)
+    generateLink(toProcess, initialLink(alpha.prefixAlphabet))
   }
 
+  private def initialLink(prefix : String) =
+  {
+    if (prefix == "default")
+      ""
+    else
+      prefix
+  }
   /**
    * We need to apply the inverse function to get the corresponding object id
    * @param alpha The alphabet to be used in the decoding
+   * @param converter to convert the integer to the original base
    * @param sid The string obtained from the url
    * @return If the string is a valid object id returns a full box, if not returns Empty box
    */
   def GetObjectId(alpha : LinkAlphabet)(converter : Int => String)(sid : String) : Box[String] =
   {
-    require(sid.startsWith(alpha.prefixAlphabet))
-    val strId = sid.substring(alpha.prefixAlphabet.length, sid.length)
+    val initialPrefix = initialLink(alpha.prefixAlphabet)
+    require(sid.startsWith(initialPrefix))
+    val strId = sid.substring(initialPrefix.length, sid.length)
     val transformArray = strId.split(rangeSeparator)
     def getNumber(number : String) : Int =
     {
